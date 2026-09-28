@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parrot Talk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky: #CFE6EE;
+    --sky-low: #F3E9D6;
+    --ink: #22303A;
+    --ink-soft: #55636D;
+    --panel: rgba(255,255,255,0.72);
+    --rose: #D2465E;
+    --rose-deep: #A8324A;
+    --leaf: #7FA08F;
+    --bark: #7A5A3E;
+    --ring-bg: rgba(34,48,58,0.14);
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --sky: #1D2C3D; --sky-low: #33304A; --ink: #EEF2F4; --ink-soft: #AAB6BF;
+      --panel: rgba(20,30,42,0.7); --ring-bg: rgba(238,242,244,0.16);
+      --bark: #5E4631; --leaf: #5F7F6F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --sky: #1D2C3D; --sky-low: #33304A; --ink: #EEF2F4; --ink-soft: #AAB6BF;
+    --panel: rgba(20,30,42,0.7); --ring-bg: rgba(238,242,244,0.16);
+    --bark: #5E4631; --leaf: #5F7F6F;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--sky) 0%, var(--sky) 45%, var(--sky-low) 100%);
+    background-color: var(--sky);
+    min-height: 100vh;
+    display: flex; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  main { width: 100%; max-width: 460px; padding: 12px 18px 28px; text-align: center; }
+  h1 { font-size: 2rem; font-weight: 800; margin: 6px 0 0; letter-spacing: -0.01em; line-height: 1; }
+  .sub { margin: 4px 0 0; color: var(--ink-soft); font-size: 1rem; }
+
+  .stage { width: 100%; aspect-ratio: 400 / 400; margin: 4px auto 0; max-width: 400px; }
+  .stage svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  .record-wrap { position: relative; width: 132px; height: 132px; margin: 0 auto; }
+  .ring { position: absolute; inset: 0; transform: rotate(-90deg); pointer-events: none; }
+  .ring circle { fill: none; stroke-width: 7; }
+  .ring .bg { stroke: var(--ring-bg); }
+  .ring .fg { stroke: var(--rose); stroke-linecap: round; transition: stroke-dashoffset 0.08s linear; }
+  #rec {
+    position: absolute; inset: 14px; border-radius: 50%; border: none;
+    background: var(--rose); color: #fff; font: inherit; font-weight: 700; font-size: 1.05rem;
+    line-height: 1.1; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+    box-shadow: 0 6px 0 var(--rose-deep); transition: transform 0.08s, box-shadow 0.08s;
+  }
+  #rec.live { transform: translateY(5px); box-shadow: 0 1px 0 var(--rose-deep); }
+  #rec:focus-visible, button:focus-visible, .switch input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  .status { min-height: 1.6em; margin: 12px 0 6px; color: var(--ink-soft); font-size: 1rem; }
+  .status.err { color: var(--rose); }
+
+  .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+  .btn {
+    font: inherit; font-weight: 700; font-size: 1rem; padding: 8px 18px; border-radius: 999px;
+    border: 2px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer;
+  }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+
+  .panel { margin-top: 18px; background: var(--panel); border-radius: 22px; padding: 14px 14px 16px; }
+  .species { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sp {
+    font: inherit; font-size: 0.85rem; font-weight: 700; color: var(--ink); line-height: 1.1;
+    background: transparent; border: 2px solid transparent; border-radius: 16px; padding: 6px 2px; cursor: pointer;
+  }
+  .sp[aria-pressed="true"] { border-color: var(--ink); }
+  .dot { display: block; width: 34px; height: 34px; border-radius: 50%; margin: 0 auto 4px; }
+
+  .toggles { display: flex; justify-content: center; gap: 22px; margin-top: 14px; flex-wrap: wrap; }
+  .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch span.track {
+    width: 44px; height: 26px; border-radius: 99px; background: var(--ring-bg); position: relative; transition: background 0.15s;
+  }
+  .switch span.track::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.15s;
+  }
+  .switch input:checked + span.track { background: var(--rose); }
+  .switch input:checked + span.track::after { transform: translateX(18px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #rec, .switch span.track::after, .ring .fg { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Parrot Talk</h1>
+  <p class="sub">Hold the button, say something, let go.</p>
+
+  <div class="stage" aria-hidden="true">
+    <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <!-- tail -->
+      <g id="tail">
+        <path d="M180 262 L138 388 L160 395 L206 284 Z" fill="var(--p-tail)"/>
+        <path d="M194 268 L166 392 L186 396 L214 290 Z" fill="var(--p-tail)" opacity="0.85"/>
+      </g>
+      <!-- branch -->
+      <path d="M-20 338 C 80 322, 200 348, 420 322" stroke="var(--bark)" stroke-width="16" stroke-linecap="round" fill="none"/>
+      <path d="M320 328 C 340 300, 350 290, 372 282" stroke="var(--bark)" stroke-width="7" stroke-linecap="round" fill="none"/>
+      <ellipse cx="370" cy="272" rx="18" ry="8" transform="rotate(-30 370 272)" fill="var(--leaf)"/>
+      <ellipse cx="350" cy="292" rx="16" ry="7" transform="rotate(25 350 292)" fill="var(--leaf)"/>
+      <ellipse cx="60" cy="318" rx="20" ry="8" transform="rotate(-15 60 318)" fill="var(--leaf)"/>
+      <ellipse cx="34" cy="344" rx="18" ry="7" transform="rotate(20 34 344)" fill="var(--leaf)"/>
+
+      <g id="bird">
+        <!-- body -->
+        <ellipse cx="212" cy="240" rx="60" ry="88" transform="rotate(-18 212 240)" fill="var(--p-chest)"/>
+        <!-- wing -->
+        <path d="M254 190 C 232 172, 182 190, 168 250 C 160 290, 166 318, 150 352 C 192 332, 226 302, 242 262 C 252 236, 260 210, 254 190 Z" fill="var(--p-wing)"/>
+        <path d="M232 214 C 214 236, 196 262, 184 300 M244 236 C 226 262, 206 290, 190 322" stroke="rgba(0,0,0,0.16)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- feet -->
+        <ellipse cx="200" cy="330" rx="10" ry="7" fill="var(--p-feet)"/>
+        <ellipse cx="226" cy="328" rx="10" ry="7" fill="var(--p-feet)"/>
+
+        <!-- head (rotates for bobbing) -->
+        <g id="head">
+          <g id="crest">
+            <path d="M226 98 C 210 64, 196 52, 178 46 C 194 62, 204 82, 214 104 Z" fill="var(--p-crest)"/>
+            <path d="M238 92 C 230 58, 222 42, 206 30 C 216 50, 222 72, 226 98 Z" fill="var(--p-crest)"/>
+            <path d="M252 90 C 252 58, 248 40, 238 24 C 244 46, 244 68, 240 94 Z" fill="var(--p-crest)"/>
+          </g>
+          <ellipse cx="240" cy="178" rx="44" ry="40" fill="var(--p-chest)"/>
+          <circle cx="252" cy="138" r="50" fill="var(--p-head)"/>
+          <ellipse cx="268" cy="154" rx="34" ry="30" fill="var(--p-face)"/>
+          <!-- eye -->
+          <circle cx="272" cy="128" r="11" fill="var(--p-eyering)"/>
+          <circle cx="272" cy="128" r="5.5" fill="#1b1b1b"/>
+          <circle cx="274" cy="126" r="1.8" fill="#fff"/>
+          <ellipse id="lid" cx="272" cy="128" rx="11.5" ry="0" fill="var(--p-head)"/>
+          <!-- beak -->
+          <path id="jaw" d="M294 158 C 305 170, 312 176, 318 176 C 312 184, 300 184, 291 172 Z" fill="var(--p-beak2)"/>
+          <path d="M290 128 C 312 126, 330 140, 332 160 C 333 172, 326 180, 320 178 C 322 168, 316 160, 294 162 Z" fill="var(--p-beak)"/>
+          <!-- santa hat -->
+          <g id="hat" style="display:none">
+            <path d="M214 100 L292 108 C 284 66, 242 42, 198 56 C 186 60, 178 72, 178 86 C 194 78, 208 84, 214 100 Z" fill="#C8323C"/>
+            <circle cx="178" cy="88" r="11" fill="#FAFAF7"/>
+            <rect x="206" y="92" width="92" height="18" rx="9" transform="rotate(8 252 101)" fill="#FAFAF7"/>
+          </g>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="record-wrap">
+    <svg class="ring" viewBox="0 0 132 132">
+      <circle class="bg" cx="66" cy="66" r="60"/>
+      <circle class="fg" id="ringFg" cx="66" cy="66" r="60"/>
+    </svg>
+    <button id="rec" type="button" aria-label="Hold to record">Hold to<br>record</button>
+  </div>
+  <p class="status" id="status" role="status">Up to 10 seconds.</p>
+
+  <div class="row">
+    <button class="btn" id="play" type="button" disabled>Play again</button>
+  </div>
+
+  <div class="panel">
+    <div class="species" id="species"></div>
+    <div class="toggles">
+      <label class="switch"><input type="checkbox" id="parrotVoice" checked><span class="track"></span>Parrot voice</label>
+      <label class="switch"><input type="checkbox" id="hatToggle"><span class="track"></span>Santa hat</label>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const MAX_SECONDS = 10;
+  const SPECIES = {
+    galah:    { name: "Galah", crest: true, c: { head:"#F4C6D1", face:"#E2738F", chest:"#E2738F", crest:"#F8DCE3", wing:"#A7AFB8", tail:"#8E969F", beak:"#EFE6D8", beak2:"#D8CCB8", eyering:"#E9A5B5", feet:"#9A9DA3" } },
+    lorikeet: { name: "Lorikeet", crest: false, c: { head:"#3F5FC4", face:"#4A6FD6", chest:"#F2702A", crest:"#3F5FC4", wing:"#3F9E4B", tail:"#2F8A3E", beak:"#E0342C", beak2:"#B9281F", eyering:"#D9462E", feet:"#7C7F86" } },
+    cockatoo: { name: "Cockatoo", crest: true, c: { head:"#F7F7F3", face:"#EFEFE8", chest:"#F2F2EC", crest:"#F5D33B", wing:"#E4E4DC", tail:"#DCDBD2", beak:"#3A3A3E", beak2:"#262629", eyering:"#DCEBF2", feet:"#5B5D63" } },
+    kea:      { name: "Kea", crest: false, c: { head:"#7D8A45", face:"#869350", chest:"#8E9A55", crest:"#7D8A45", wing:"#6E7B3A", tail:"#E07B2E", beak:"#4A4B4E", beak2:"#333437", eyering:"#5B6135", feet:"#6A6C70" } }
+  };
+
+  const $ = id => document.getElementById(id);
+  const svgRoot = document.querySelector(".stage svg");
+  const head = $("head"), jaw = $("jaw"), crest = $("crest"), lid = $("lid"), hat = $("hat");
+  const rec = $("rec"), statusEl = $("status"), playBtn = $("play");
+  const ringFg = $("ringFg");
+  const CIRC = 2 * Math.PI * 60;
+  ringFg.style.strokeDasharray = CIRC;
+  ringFg.style.strokeDashoffset = CIRC;
+
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let currentSpecies = "galah";
+
+  // ---------- species picker ----------
+  const spWrap = $("species");
+  function applySpecies(key) {
+    currentSpecies = key;
+    const s = SPECIES[key];
+    for (const [k, v] of Object.entries(s.c)) svgRoot.style.setProperty("--p-" + k, v);
+    updateCrestVisibility();
+    spWrap.querySelectorAll(".sp").forEach(b => b.setAttribute("aria-pressed", b.dataset.key === key));
+    try { localStorage.setItem("parrot-species", key); } catch (e) {}
+  }
+  function updateCrestVisibility() {
+    const hatOn = $("hatToggle").checked;
+    crest.style.display = (SPECIES[currentSpecies].crest && !hatOn) ? "" : "none";
+    hat.style.display = hatOn ? "" : "none";
+  }
+  for (const [key, s] of Object.entries(SPECIES)) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "sp"; b.dataset.key = key;
+    b.innerHTML = `<span class="dot" style="background:linear-gradient(135deg, ${s.c.face} 0 50%, ${s.c.wing} 50% 100%)"></span>${s.name}`;
+    b.addEventListener("click", () => applySpecies(key));
+    spWrap.appendChild(b);
+  }
+  let saved = null;
+  try { saved = localStorage.getItem("parrot-species"); } catch (e) {}
+  applySpecies(SPECIES[saved] ? saved : "galah");
+  $("hatToggle").addEventListener("change", updateCrestVisibility);
+
+  // ---------- audio ----------
+  let ctx = null, analyser = null, stream = null, recorder = null, chunks = [];
+  let rawBuffer = null, parrotBuffer = null, currentSource = null;
+  let recStart = 0, recTimer = null, recording = false;
+
+  function ensureCtx() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.connect(ctx.destination);
+    }
+    if (ctx.state === "suspended") ctx.resume();
+  }
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle("err", !!isErr);
+  }
+
+  async function startRecording() {
+    if (recording) return;
+    ensureCtx();
+    stopPlayback();
+    try {
+      if (!stream) stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch (e) {
+      setStatus("Microphone blocked. Allow mic access in your browser settings, then try again.", true);
+      return;
+    }
+    const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+    const mimeType = types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    try {
+      recorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 32000 } : undefined);
+    } catch (e) {
+      setStatus("This browser can't record audio.", true);
+      return;
+    }
+    chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = handleRecorded;
+    recorder.start();
+    recording = true;
+    recStart = performance.now();
+    rec.classList.add("live");
+    rec.innerHTML = "Let go<br>to send";
+    setStatus("Recording…");
+    recTimer = setInterval(() => {
+      const t = (performance.now() - recStart) / 1000;
+      ringFg.style.strokeDashoffset = CIRC * (1 - Math.min(t / MAX_SECONDS, 1));
+      if (t >= MAX_SECONDS) stopRecording();
+    }, 50);
+  }
+
+  function stopRecording() {
+    if (!recording) return;
+    recording = false;
+    clearInterval(recTimer);
+    rec.classList.remove("live");
+    rec.innerHTML = "Hold to<br>record";
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+  }
+
+  async function handleRecorded() {
+    ringFg.style.strokeDashoffset = CIRC;
+    const dur = (performance.now() - recStart) / 1000;
+    if (dur < 0.4 || !chunks.length) { setStatus("Too short. Hold the button while you talk."); return; }
+    setStatus("Teaching the parrot…");
+    try {
+      const blob = new Blob(chunks, { type: chunks[0].type });
+      const arr = await blob.arrayBuffer();
+      rawBuffer = await ctx.decodeAudioData(arr);
+      parrotBuffer = null;
+      playBtn.disabled = false;
+      setStatus(`${dur.toFixed(1)} seconds recorded.`);
+      play();
+    } catch (e) {
+      setStatus("Couldn't read that recording. Try again.", true);
+    }
+  }
+
+  // Time-preserving pitch shift (overlap-add of resampled grains)
+  function pitchShift(buffer, factor) {
+    const sr = buffer.sampleRate;
+    const input = buffer.getChannelData(0);
+    const len = input.length;
+    const grain = Math.floor(sr * 0.045);
+    const hop = Math.floor(grain / 2);
+    const win = new Float32Array(grain);
+    for (let i = 0; i < grain; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (grain - 1));
+    const out = new Float32Array(len);
+    for (let pos = 0; pos + grain < len; pos += hop) {
+      for (let i = 0; i < grain; i++) {
+        const src = pos + i * factor;
+        const idx = Math.floor(src);
+        if (idx + 1 >= len) break;
+        const frac = src - idx;
+        out[pos + i] += (input[idx] * (1 - frac) + input[idx + 1] * frac) * win[i];
+      }
+    }
+    let peak = 0;
+    for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(out[i]));
+    const gain = peak > 0 ? 0.9 / peak : 1;
+    const result = ctx.createBuffer(1, len, sr);
+    const ch = result.getChannelData(0);
+    for (let i = 0; i < len; i++) ch[i] = out[i] * gain;
+    return result;
+  }
+
+  function stopPlayback() {
+    if (currentSource) { try { currentSource.stop(); } catch (e) {} currentSource = null; }
+  }
+
+  function play() {
+    if (!rawBuffer) return;
+    ensureCtx();
+    stopPlayback();
+    const parrot = $("parrotVoice").checked;
+    const src = ctx.createBufferSource();
+    let last = src;
+    if (parrot) {
+      if (!parrotBuffer) parrotBuffer = pitchShift(rawBuffer, 1.75);
+      src.buffer = parrotBuffer;
+      src.playbackRate.value = 1.08; // a touch quicker, more birdlike
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 380;
+      const peak = ctx.createBiquadFilter(); peak.type = "peaking"; peak.frequency.value = 2900; peak.Q.value = 1.2; peak.gain.value = 7;
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 7500;
+      // raspy tremolo
+      const trem = ctx.createGain(); trem.gain.value = 0.85;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 38;
+      const depth = ctx.createGain(); depth.gain.value = 0.15;
+      lfo.connect(depth).connect(trem.gain); lfo.start();
+      src.onended = () => { try { lfo.stop(); } catch (e) {} };
+      src.connect(hp).connect(peak).connect(lp).connect(trem);
+      last = trem;
+    } else {
+      src.buffer = rawBuffer;
+    }
+    last.connect(analyser);
+    const thisSrc = src;
+    src.addEventListener("ended", () => { if (currentSource === thisSrc) currentSource = null; });
+    src.start();
+    currentSource = src;
+  }
+
+  $("parrotVoice").addEventListener("change", () => { if (rawBuffer) play(); });
+  playBtn.addEventListener("click", play);
+
+  // hold-to-record with pointer + keyboard
+  rec.addEventListener("pointerdown", e => { e.preventDefault(); rec.setPointerCapture(e.pointerId); startRecording(); });
+  rec.addEventListener("pointerup", stopRecording);
+  rec.addEventListener("pointercancel", stopRecording);
+  rec.addEventListener("contextmenu", e => e.preventDefault());
+  rec.addEventListener("keydown", e => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); startRecording(); } });
+  rec.addEventListener("keyup", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); stopRecording(); } });
+
+  // ---------- animation loop ----------
+  const buf = new Float32Array(1024);
+  let level = 0, nextBlink = performance.now() + 2500, blinkUntil = 0;
+  function frame(now) {
+    let target = 0;
+    if (analyser && currentSource) {
+      analyser.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      target = Math.min(1, Math.sqrt(sum / buf.length) * 5.5);
+    }
+    level += (target - level) * (target > level ? 0.6 : 0.25);
+
+    jaw.setAttribute("transform", `rotate(${(level * 30).toFixed(2)} 294 160)`);
+    const idle = reduceMotion ? 0 : Math.sin(now / 900) * 1.8;
+    head.setAttribute("transform", `rotate(${(idle - level * 7).toFixed(2)} 238 192)`);
+    crest.setAttribute("transform", `rotate(${(-level * 18).toFixed(2)} 236 100)`);
+
+    if (now > nextBlink) { blinkUntil = now + 130; nextBlink = now + 2500 + Math.random() * 3000; }
+    lid.setAttribute("ry", now < blinkUntil ? "11.5" : "0");
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
